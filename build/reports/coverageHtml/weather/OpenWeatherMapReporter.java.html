@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OpenWeatherMapReporter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Weather-Service</a> &gt; <a href="index.source.html" class="el_package">weather</a> &gt; <span class="el_source">OpenWeatherMapReporter.java</span></div><h1>OpenWeatherMapReporter.java</h1><pre class="source lang-java linenums">package weather;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L16">public class OpenWeatherMapReporter implements WeatherReporter {</span>
+<span class="fc" id="L17">    final String openWeatherMapURL = &quot;http://api.openweathermap.org/data/2.5/forecast/daily?zip=&quot;;</span>
+<span class="fc" id="L18">    final String API_KEY = &quot;&amp;appid=bb4eea7ffb7cc057e1cb84243eaa5c1f&quot;;</span>
+<span class="fc" id="L19">    final String units = &quot;&amp;units=Imperial&quot;;</span>
+
+    public WeatherSummary getWeatherReportForCity(String zipcode) {
+        try {
+<span class="fc" id="L23">            URL url = getURL(zipcode);</span>
+<span class="fc" id="L24">            HttpURLConnection connection = setUpConnection((HttpURLConnection) url.openConnection());</span>
+<span class="fc" id="L25">            final String data = getJSONDataFromService(connection.getInputStream());</span>
+<span class="fc" id="L26">            connection.disconnect();</span>
+
+<span class="fc" id="L28">            return JSONParser(data);</span>
+<span class="fc" id="L29">        } catch (Exception ex) {</span>
+<span class="fc" id="L30">            throw new RuntimeException(ex);</span>
+        }
+    }
+
+    HttpURLConnection setUpConnection(HttpURLConnection urlConnection) throws IOException, InterruptedException {
+<span class="fc" id="L35">        final int RETRIES = 5;</span>
+<span class="fc" id="L36">        int retry = 0;</span>
+        int responseCode;
+        do{
+<span class="fc bfc" id="L39" title="All 2 branches covered.">            if(urlConnection.getResponseCode() == HttpURLConnection.HTTP_OK)</span>
+<span class="fc" id="L40">                return urlConnection;</span>
+<span class="fc" id="L41">            responseCode = urlConnection.getResponseCode();</span>
+<span class="fc" id="L42">            urlConnection.disconnect();</span>
+<span class="fc" id="L43">            retry++;</span>
+<span class="fc" id="L44">            Thread.sleep(200);</span>
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        }while (retry &lt;RETRIES);</span>
+
+<span class="fc" id="L47">        throw new IOException(String.format(&quot;Unable to connect after %d retries. HTTP status code %d&quot;, retry, responseCode));</span>
+    }
+
+    String getJSONDataFromService(InputStream stream) throws IOException {
+<span class="fc" id="L51">        BufferedReader reader = new BufferedReader(new InputStreamReader(stream));</span>
+<span class="fc" id="L52">        return reader.lines().collect(Collectors.joining());</span>
+    }
+
+    URL getURL(String zipcode) throws MalformedURLException {
+<span class="fc" id="L56">        return new URL(openWeatherMapURL + zipcode + API_KEY + units);</span>
+    }
+
+    WeatherSummary JSONParser(String str){
+        try {
+<span class="fc" id="L61">            JSONArray obj = new JSONObject(str).getJSONArray(&quot;list&quot;);</span>
+<span class="fc" id="L62">            JSONObject firstResult = obj.getJSONObject(0);</span>
+
+<span class="fc" id="L64">            JSONObject weather = firstResult.getJSONArray(&quot;weather&quot;).getJSONObject(0);</span>
+<span class="fc" id="L65">            JSONObject temp = firstResult.getJSONObject(&quot;temp&quot;);</span>
+
+<span class="fc" id="L67">            String conditions = weather.get(&quot;main&quot;).toString();</span>
+<span class="fc" id="L68">            Integer highTemp = Double.valueOf(temp.get(&quot;max&quot;).toString()).intValue();</span>
+<span class="fc" id="L69">            Integer lowTemp = Double.valueOf(temp.get(&quot;min&quot;).toString()).intValue();</span>
+
+<span class="fc" id="L71">            return new WeatherSummary(conditions, highTemp, lowTemp);</span>
+
+<span class="fc" id="L73">        }catch (JSONException ex) {</span>
+<span class="fc" id="L74">            throw new RuntimeException(&quot;JSON string is in unexpected format : &quot;+ ex.getMessage());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.7.201606060606</span></div></body></html>
